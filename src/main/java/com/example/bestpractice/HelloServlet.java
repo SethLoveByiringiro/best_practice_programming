@@ -10,10 +10,13 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 import java.io.IOException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 @WebServlet("/myservlet")
 public class HelloServlet extends HttpServlet {
-
+    private static final Logger LOGGER = LogManager.getLogger(HelloServlet.class);
     private SessionFactory sessionFactory;
 
     @Override
@@ -23,7 +26,9 @@ public class HelloServlet extends HttpServlet {
             configuration.setProperty("hibernate.validator.apply_to_ddl", "false");
             configuration.setProperty("hibernate.validator.autoregister_listeners", "false");
             sessionFactory = configuration.buildSessionFactory();
+            LOGGER.info("Hibernate SessionFactory initialized successfully.");
         } catch (Exception e) {
+            LOGGER.error("Error initializing Hibernate", e);
             throw new ServletException("Error initializing Hibernate", e);
         }
     }
@@ -53,16 +58,19 @@ public class HelloServlet extends HttpServlet {
             session.save(user);
             transaction.commit();
 
+            LOGGER.info("User saved successfully with ID: " + id);
             request.setAttribute("id", id);
             request.setAttribute("name", name);
             request.getRequestDispatcher("/success.jsp").forward(request, response);
         } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid ID format: " + idStr, e);
             request.setAttribute("error", "Invalid ID format. Please enter a valid integer.");
             request.getRequestDispatcher("/input.jsp").forward(request, response);
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
+            LOGGER.error("An error occurred while saving the user", e);
             request.setAttribute("error", "An error occurred: " + e.getMessage());
             request.getRequestDispatcher("/input.jsp").forward(request, response);
         } finally {
@@ -74,6 +82,7 @@ public class HelloServlet extends HttpServlet {
     public void destroy() {
         if (sessionFactory != null) {
             sessionFactory.close();
+            LOGGER.info("Hibernate SessionFactory closed.");
         }
     }
 }
